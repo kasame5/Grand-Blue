@@ -13,6 +13,35 @@ export type ManifestStatus = 'draft' | 'confirmed' | 'locked' | 'departed' | 'cl
 
 export type DiverLevel = 'OW' | 'AOW' | 'RESCUE';
 
+/**
+ * 教练 / 潜导的带队资质等级。
+ * 这是「能带谁、能带多深」的等级，与潜水员等级（OW/AOW/RESCUE）是两套体系，不能互相映射。
+ */
+export type InstructorRating = 'DIVEMASTER' | 'OWSI' | 'AOWSI' | 'SPECIALTY_INSTRUCTOR';
+
+/** 教练等级的中文名，界面直接用 */
+export const RATING_LABEL: Record<InstructorRating, string> = {
+  DIVEMASTER: '潜水长',
+  OWSI: '开放水域教练',
+  AOWSI: '进阶教练',
+  SPECIALTY_INSTRUCTOR: '专长教练',
+};
+
+/** 持证等级对应的最大深度（米），国际通行：OW 18 / AOW 30 */
+export const LEVEL_MAX_DEPTH: Record<DiverLevel, number> = {
+  OW: 18,
+  AOW: 30,
+  RESCUE: 30,
+};
+
+/** 取得深潜专长后的最大深度 */
+export const DEEP_MAX_DEPTH = 40;
+
+/** 某个潜水员能下的最大深度：取持证等级与专长的较高者 */
+export function maxDepthOf(diver: Diver): number {
+  return diver.specialties.includes('深潜') ? DEEP_MAX_DEPTH : LEVEL_MAX_DEPTH[diver.level];
+}
+
 export type Specialty = '深潜' | '夜潜' | '沉船' | '水下摄影';
 
 /** 规则判定的对象类型 —— Findings 靠它定位到界面上的某一行 */
@@ -66,6 +95,12 @@ export interface Trip {
   code: string;
   date: string;
   diveSite: string;
+  /** 潜点计划深度（米）—— 决定谁能下、谁能带 */
+  depth: number;
+  /** 潜点最低持证等级 */
+  requiredLevel: DiverLevel;
+  /** 潜点要求的专长，如 ['深潜'] */
+  requiredSpecialties: Specialty[];
   /** 集合时刻（ISO） */
   meetAt: string;
   /** 计划离港时刻（ISO） */
@@ -99,8 +134,15 @@ export interface Instructor {
   id: string;
   code: string;
   name: string;
-  /** 可带教的资质，如 ['OW', 'AOW'] */
-  qualifications: string[];
+  /**
+   * 带队资质等级。
+   * 注意：这是「能带队/能教学」的等级，不是潜水员等级 —— 两者不能混。
+   */
+  rating: InstructorRating;
+  /** 能带队的最大深度（米） */
+  maxSupervisionDepth: number;
+  /** 能带的专长 */
+  specialties: Specialty[];
   /** 当日已完成的潜水（用于疲劳判定） */
   todayDives: Array<{ start: string; end: string }>;
   checkInAt: string | null;

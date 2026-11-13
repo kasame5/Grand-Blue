@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { evaluate } from '../../domain/evaluate.ts';
+import { RATING_LABEL } from '../../domain/types.ts';
 import type { Action, AppState } from '../store.ts';
 import { FindingList, Gate } from '../components.tsx';
 import { groupInfo } from '../derive.ts';
@@ -75,7 +76,9 @@ export function P4Reassign({
                             {info.coach ? (
                               <div className="coach">
                                 <b>{info.coach.name}</b>
-                                <span className="faint">{info.coach.qualifications.join('/')}</span>
+                                <span className="faint">
+                                  {RATING_LABEL[info.coach.rating]} · ≤{info.coach.maxSupervisionDepth}m
+                                </span>
                               </div>
                             ) : (
                               <span className="badge block">未指派教练</span>
@@ -154,7 +157,10 @@ export function P4Reassign({
                     return (
                       <tr key={i.id}>
                         <td style={{ fontWeight: 600 }}>{i.name}</td>
-                        <td className="faint">{i.qualifications.join(' / ')}</td>
+                        <td className="faint">
+                          {RATING_LABEL[i.rating]} · ≤{i.maxSupervisionDepth}m
+                          {i.specialties.length > 0 && <div style={{ fontSize: 11 }}>{i.specialties.join(' / ')}</div>}
+                        </td>
                         <td className="num">
                           {i.todayDives.length}
                           {fatigued && <span className="badge warn" style={{ marginLeft: 6 }}>疲劳</span>}

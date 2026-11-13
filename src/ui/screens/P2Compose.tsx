@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { NEW_DIVER } from '../../data/seed.ts';
 import { evaluate } from '../../domain/evaluate.ts';
+import { RATING_LABEL } from '../../domain/types.ts';
 import type { Action, AppState } from '../store.ts';
 import { FindingList, Gate, LevelBadge } from '../components.tsx';
 import { groupInfo } from '../derive.ts';
@@ -112,7 +113,7 @@ export function P2Compose({
                         {info.coach?.name ?? <span className="badge block">未指派</span>}
                         {info.coach && (
                           <div className="faint" style={{ fontSize: 11 }}>
-                            {info.coach.qualifications.join(' / ')}
+                            {RATING_LABEL[info.coach.rating]} · 带队 ≤{info.coach.maxSupervisionDepth}m
                           </div>
                         )}
                       </td>

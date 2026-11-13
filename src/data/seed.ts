@@ -3,6 +3,7 @@ import type {
   DiverLevel,
   Group,
   Instructor,
+  InstructorRating,
   ManifestStatus,
   Snapshot,
   Specialty,
@@ -31,7 +32,9 @@ function diver(
 function instructor(
   seq: number,
   name: string,
-  qualifications: string[],
+  rating: InstructorRating,
+  maxSupervisionDepth: number,
+  specialties: Specialty[] = [],
   todayDives: Array<{ start: string; end: string }> = [],
   checkInAt: string | null = null,
 ): Instructor {
@@ -39,7 +42,9 @@ function instructor(
     id: `i-${seq}`,
     code: `I-${seq}`,
     name,
-    qualifications,
+    rating,
+    maxSupervisionDepth,
+    specialties,
     todayDives,
     checkInAt,
   };
@@ -82,11 +87,21 @@ const DIVERS: Diver[] = [
 ];
 
 const INSTRUCTORS: Instructor[] = [
-  instructor(2001, '张伟', ['OW'], [{ start: '2026-11-08T07:30:00+08:00', end: '2026-11-08T08:15:00+08:00' }], '2026-11-08T12:00:00+08:00'),
+  instructor(
+    2001,
+    '张伟',
+    'DIVEMASTER',
+    30,
+    [],
+    [{ start: '2026-11-08T07:30:00+08:00', end: '2026-11-08T08:15:00+08:00' }],
+    '2026-11-08T12:00:00+08:00',
+  ),
   instructor(
     2002,
     '王强',
-    ['OW'],
+    'OWSI',
+    30,
+    [],
     [
       { start: '2026-11-08T07:30:00+08:00', end: '2026-11-08T08:15:00+08:00' },
       { start: '2026-11-08T08:45:00+08:00', end: '2026-11-08T09:30:00+08:00' },
@@ -94,15 +109,14 @@ const INSTRUCTORS: Instructor[] = [
     ],
     '2026-11-08T12:02:00+08:00',
   ),
-  instructor(2003, '陈静', ['OW', 'AOW', '深潜'], [], '2026-11-08T12:03:00+08:00'),
-  instructor(2004, '赵磊', ['OW', 'AOW', 'RESCUE'], [], '2026-11-08T12:04:00+08:00'),
+  instructor(2003, '陈静', 'SPECIALTY_INSTRUCTOR', 40, ['深潜'], [], '2026-11-08T12:03:00+08:00'),
+  instructor(2004, '赵磊', 'OWSI', 30, ['夜潜', '沉船'], [], '2026-11-08T12:04:00+08:00'),
 ];
 
+// 每组按人头配瓶，池子里另留 2 支备用（t-114 / t-115）
 const TANKS: Tank[] = [
-  ...[101, 102, 103, 104, 105].map((n) => tank(n)),
-  ...[106, 107, 108, 109, 110].map((n) => tank(n)),
-  ...[111, 112, 113, 114].map((n) => tank(n)),
-  ...[115, 116, 117].map((n) => tank(n)),
+  ...[101, 102, 103, 104, 105, 106, 107, 108].map((n) => tank(n)),
+  ...[109, 110, 111, 112, 113, 114, 115].map((n) => tank(n)),
 ];
 
 const GROUPS: Group[] = [
@@ -112,7 +126,7 @@ const GROUPS: Group[] = [
     vesselId: 'v-haiyan',
     instructorId: 'i-2001',
     memberIds: ['d-1001', 'd-1002', 'd-1003', 'd-1004'],
-    tankIds: ['t-101', 't-102', 't-103', 't-104', 't-105'],
+    tankIds: ['t-101', 't-102', 't-103', 't-104'],
   },
   {
     id: 'g-b',
@@ -120,7 +134,7 @@ const GROUPS: Group[] = [
     vesselId: 'v-haiyan',
     instructorId: 'i-2002',
     memberIds: ['d-1005', 'd-1006', 'd-1007', 'd-1008'],
-    tankIds: ['t-106', 't-107', 't-108', 't-109', 't-110'],
+    tankIds: ['t-105', 't-106', 't-107', 't-108'],
   },
   {
     id: 'g-c',
@@ -128,7 +142,7 @@ const GROUPS: Group[] = [
     vesselId: 'v-haiou',
     instructorId: 'i-2003',
     memberIds: ['d-1009', 'd-1010', 'd-1011'],
-    tankIds: ['t-111', 't-112', 't-113', 't-114'],
+    tankIds: ['t-109', 't-110', 't-111'],
   },
   {
     id: 'g-d',
@@ -136,7 +150,7 @@ const GROUPS: Group[] = [
     vesselId: 'v-haiou',
     instructorId: 'i-2004',
     memberIds: ['d-1012', 'd-1013'],
-    tankIds: ['t-115', 't-116', 't-117'],
+    tankIds: ['t-112', 't-113'],
   },
 ];
 
@@ -150,6 +164,9 @@ export function buildBaseSnapshot(status: ManifestStatus = 'draft', versionNo = 
       code: 'TR-20261108-01',
       date: '2026-11-08',
       diveSite: '断崖礁',
+      depth: 18,
+      requiredLevel: 'OW',
+      requiredSpecialties: [],
       meetAt: '2026-11-08T12:30:00+08:00',
       departAt: '2026-11-08T13:00:00+08:00',
       seaCondition: null,
@@ -188,5 +205,5 @@ export function buildBaseSnapshot(status: ManifestStatus = 'draft', versionNo = 
 /** 演示中“临时新增”的潜水员 */
 export const NEW_DIVER: Diver = diver(1014, '李明', 'AOW', ['深潜'], '2026-11-08T12:02:00+08:00');
 
-/** 演示用的备用气瓶 */
-export const SPARE_TANK: Tank = tank(118);
+/** 气瓶池里的备用瓶（移入新组时用） */
+export const SPARE_TANK: Tank = tank(114);

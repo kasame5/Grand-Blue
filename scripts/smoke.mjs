@@ -68,7 +68,7 @@ async function main() {
   await tick();
   const conflictText = text();
   check('R-01 船只超载命中', conflictText.includes('R-01') && conflictText.includes('超过核定'));
-  check('R-02 资质不匹配命中', conflictText.includes('R-02'));
+  check('R-03 气瓶不足命中', conflictText.includes('R-03') && conflictText.includes('可用气瓶'));
   check('R-06 配比不足命中', conflictText.includes('R-06'));
 
   // ---- ④ 调配：把李明移到 C 组

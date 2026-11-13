@@ -5,7 +5,7 @@
  *   8 条规则会不会真的判、状态机挡不挡、版本能不能 diff、通知发没发。
  * 这一层跑通了，界面才只是“把它画出来”。
  */
-import { NEW_DIVER, SPARE_TANK, buildBaseSnapshot } from '../data/seed.ts';
+import { NEW_DIVER, buildBaseSnapshot } from '../data/seed.ts';
 import { evaluate } from '../domain/evaluate.ts';
 import {
   addMember,
@@ -73,28 +73,32 @@ expect(!early.ok, '未锁定状态下不应允许离港');
 // ------------------------------------------------------------------ 3
 
 banner('步骤 3', '临时新增潜水员：李明 → 海燕号 B 组', '预订刚确认，前台把人加了进来');
-let v2 = addMember(snap, 'g-b', NEW_DIVER, SPARE_TANK);
+let v2 = addMember(snap, 'g-b', NEW_DIVER);
 v2 = setStatus(v2, 'draft', 2);
 const r2 = run(v2, T.add);
 printEval(r2);
 
-expect(countBlock(r2.findings) === 3, '新增后应产生 3 条阻断（R-01 / R-02 / R-06）');
+expect(countBlock(r2.findings) === 3, '新增后应产生 3 条阻断（R-01 / R-03 / R-06）');
 expect(
   r2.findings.some((f) => f.ruleId === 'R-01'),
   '应命中船只超载',
 );
 expect(
-  r2.findings.some((f) => f.ruleId === 'R-02'),
-  '应命中教练资质不匹配',
+  r2.findings.some((f) => f.ruleId === 'R-03'),
+  '应命中气瓶不足（新增的人还没配瓶）',
 );
 expect(
   r2.findings.some((f) => f.ruleId === 'R-06'),
   '应命中教练配比不足',
 );
+expect(
+  !r2.findings.some((f) => f.ruleId === 'R-02'),
+  'R-02 不应再误报：AOW 潜水员参加 fun dive 本来就不需要 AOW 教练',
+);
 
 // ------------------------------------------------------------------ 4
 
-banner('步骤 4', '店长处置：把李明调到海鸥号 C 组', '海燕号腾出 1 人，C 组教练陈静具备 AOW + 深潜资质');
+banner('步骤 4', '店长处置：把李明调到海鸥号 C 组', '海燕号腾出 1 人；陈静是专长教练，带队上限 40m，C 组还多一支备用瓶');
 const v3 = setStatus(moveMember(v2, 'g-b', 'g-c', NEW_DIVER.id), 'draft', 3);
 const r3 = run(v3, T.move);
 printEval(r3);
@@ -243,10 +247,35 @@ expect(
   '弃权后 R-05 应少报一个人',
 );
 
-banner('步骤 12', '补充演示：R-03 气瓶不适航 / R-08 重复分配', '主链路没覆盖到的两条规则，单独验证');
+banner('步骤 12', '补充演示：R-02 潜点适配', '把潜点换成 32m 并要求深潜专长，看三种资质各自怎么判');
+
+const deep = structuredClone(snap);
+deep.trip.depth = 32;
+deep.trip.requiredSpecialties = ['深潜'];
+const rDeep = run(deep, T.init);
+const deepFindings = rDeep.findings.filter((f) => f.ruleId === 'R-02');
+
+for (const f of deepFindings.slice(0, 3)) {
+  console.log(`
+  ${red('[阻断]')} ${bold(f.ruleId)} ${f.subject.label}`);
+  console.log(`        ${f.message}`);
+}
+console.log(dim(`  …… 共 ${deepFindings.length} 条 R-02 命中`));
+
+expect(deepFindings.length > 0, '深水潜点应命中 R-02');
+expect(
+  deepFindings.some((f) => f.message.includes('带队上限')),
+  '带队者深度不足也应被判定（这是旧模型完全没有的维度）',
+);
+expect(
+  deepFindings.every((f) => f.ruleId === 'R-02'),
+  'R-02 命中项应全部来自 R-02',
+);
+
+banner('步骤 13', '补充演示：气瓶不适航 / 重复分配', 'R-03 的“瓶况”分支与 R-08');
 
 const expired = structuredClone(snap);
-const badTank = expired.tanks.find((t) => t.id === 't-114');
+const badTank = expired.tanks.find((t) => t.id === 't-111');
 if (badTank) {
   badTank.inspectionExpiry = '2026-09-30';
   badTank.status = 'maintenance';
@@ -264,7 +293,7 @@ expect(dupFindings.length > 0, '同一人同日多船次应命中 R-08');
 
 // ------------------------------------------------------------------ 12
 
-banner('步骤 13', '8 条规则覆盖情况', '每一条都至少被触发过一次');
+banner('步骤 14', '8 条规则覆盖情况', '每一条都至少被触发过一次');
 printRulesTable(
   RULE_DEFS.map((r) => ({ id: r.id, name: r.name, level: r.level, hits: hits[r.id] ?? 0 })),
 );

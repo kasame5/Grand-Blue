@@ -1,14 +1,15 @@
-import type { Finding, Snapshot, Diver, DiverLevel, Level, Tank } from '../types.ts';
-import { diverById, groupsOfVessel, instructorById, tankById, vesselById } from '../types.ts';
+import type { Finding, Snapshot, Diver, Level, Tank } from '../types.ts';
+import {
+  RATING_LABEL,
+  diverById,
+  groupsOfVessel,
+  instructorById,
+  maxDepthOf,
+  tankById,
+  vesselById,
+} from '../types.ts';
 import { fmtTime, minutesBetween, numParam, toMs } from '../util.ts';
 import type { RuleCheck } from './defs.ts';
-
-/** 潜水员等级 → 教练必须具备的资质 */
-const REQUIRED_QUALIFICATION: Record<DiverLevel, string> = {
-  OW: 'OW',
-  AOW: 'AOW',
-  RESCUE: 'RESCUE',
-};
 
 function personLabel(snap: Snapshot, personId: string): string {
   const d = diverById(snap, personId);
@@ -63,42 +64,85 @@ const checkCapacity: RuleCheck = (snap, params) => {
 
 // ------------------------------------------------------------------ R-02
 
-/** 教练资质不匹配：组内每个人的等级与专长都要落在教练资质内 */
-const checkQualification: RuleCheck = (snap) => {
+/**
+ * 潜点适配：三件事各自独立判断，不能互相替代。
+ *
+ *  1. 潜水员等级 → 能下多深（OW 18m / AOW 30m / 深潜专长 40m）
+ *  2. 潜水员专长 → 潜点要求的专长是否具备
+ *  3. 带队资质 → 教练/潜导能带多深、能带什么专长
+ *
+ * 旧模型把「教练资质」当成「能带什么等级的学员」，是错的：
+ * 持证潜水员参加 fun dive 时并不存在教学关系，真正约束的是潜点深度和带队者资质。
+ */
+const checkDiveSiteFit: RuleCheck = (snap) => {
   const out: Finding[] = [];
+  const { depth, requiredSpecialties } = snap.trip;
 
+  // 1 + 2：逐人看深度与专长
   for (const group of snap.groups) {
-    if (group.instructorId === null) continue; // 未指派教练由 R-06 处理，不重复报
-    const instructor = instructorById(snap, group.instructorId);
-    if (!instructor) continue;
+    const vessel = vesselById(snap, group.vesselId);
+    const groupLabel = `${vessel?.name ?? ''} ${group.code}`.trim();
 
-    const problems: string[] = [];
     for (const memberId of group.memberIds) {
       const diver = diverById(snap, memberId);
       if (!diver) continue;
 
-      const required = new Set<string>([REQUIRED_QUALIFICATION[diver.level]]);
-      if (diver.specialties.includes('深潜')) required.add('深潜');
+      const canDive = maxDepthOf(diver);
+      const missingSpecialties = requiredSpecialties.filter((s) => !diver.specialties.includes(s));
+      const problems: string[] = [];
 
-      const missing = [...required].filter((q) => !instructor.qualifications.includes(q));
-      if (missing.length > 0) {
-        problems.push(`${diver.name}（${diver.level}）需要 ${missing.join('/')} 资质`);
+      if (canDive < depth) problems.push(`最大深度 ${canDive}m 低于潜点 ${depth}m`);
+      if (missingSpecialties.length > 0) problems.push(`缺少专长 ${missingSpecialties.join('、')}`);
+
+      if (problems.length > 0) {
+        out.push(
+          finding(
+            'R-02',
+            'block',
+            { kind: 'person', id: diver.id, label: diver.name },
+            `${diver.name}（${diver.level}）不满足 ${snap.trip.diveSite}：${problems.join('；')}`,
+            {
+              fact: { canDive, depth },
+              suggestion: '换到适配其等级的潜点或分组，或取消其本次潜水',
+            },
+          ),
+        );
       }
     }
 
-    if (problems.length > 0) {
-      const vessel = vesselById(snap, group.vesselId);
+    // 3：带队者资质
+    if (group.instructorId === null) continue; // 未指派由 R-06 处理，不重复报
+    const instructor = instructorById(snap, group.instructorId);
+    if (!instructor) continue;
+
+    if (instructor.maxSupervisionDepth < depth) {
       out.push(
         finding(
           'R-02',
           'block',
-          { kind: 'group', id: group.id, label: `${vessel?.name ?? ''} ${group.code}`.trim() },
-          `${group.code}：教练${instructor.name}（${instructor.qualifications.join('/')}）资质不匹配 —— ${problems.join('；')}`,
-          { suggestion: '更换具备对应资质的教练，或调整组内成员' },
+          { kind: 'group', id: group.id, label: groupLabel },
+          `${group.code} 带队者 ${instructor.name}（${RATING_LABEL[instructor.rating]}）带队上限 ${instructor.maxSupervisionDepth}m，低于潜点 ${depth}m`,
+          { suggestion: '换具备相应深度资质的带队者' },
+        ),
+      );
+    }
+
+    const missingForInstructor = requiredSpecialties.filter(
+      (s) => !instructor.specialties.includes(s),
+    );
+    if (missingForInstructor.length > 0) {
+      out.push(
+        finding(
+          'R-02',
+          'block',
+          { kind: 'group', id: group.id, label: groupLabel },
+          `${group.code} 带队者 ${instructor.name} 不具备本次潜点要求的专长：${missingForInstructor.join('、')}`,
+          { suggestion: '换具备对应专长的带队者' },
         ),
       );
     }
   }
+
   return out;
 };
 
@@ -381,7 +425,7 @@ const checkDuplicate: RuleCheck = (snap) => {
 /** 规则注册表：id → 判定函数 */
 export const CHECKS: Record<string, RuleCheck> = {
   'R-01': checkCapacity,
-  'R-02': checkQualification,
+  'R-02': checkDiveSiteFit,
   'R-03': checkTanks,
   'R-04': checkFatigue,
   'R-05': checkAttendance,

@@ -38,11 +38,12 @@ export const RULE_DEFS: RuleDef[] = [
   },
   {
     id: 'R-02',
-    name: '教练资质不匹配',
+    name: '潜点适配不满足',
     level: 'block',
     scope: 'group',
     params: {},
-    message: '组内任一名潜水员的等级或专长要求，必须在该组教练的资质范围内',
+    message:
+      '潜水员的最大深度与专长、带队者的带队深度与专长，三者都必须满足本次潜点要求；三者相互独立，不能互相替代',
     enabled: true,
   },
   {

@@ -1,4 +1,4 @@
-import { NEW_DIVER, SPARE_TANK, buildBaseSnapshot } from '../data/seed.ts';
+import { NEW_DIVER, buildBaseSnapshot } from '../data/seed.ts';
 import { evaluate } from '../domain/evaluate.ts';
 import {
   addMember,
@@ -184,7 +184,7 @@ export function reducer(state: AppState, action: Action): AppState {
       }
       return commit(
         state,
-        (s) => addMember(s, 'g-b', NEW_DIVER, SPARE_TANK),
+        (s) => addMember(s, 'g-b', NEW_DIVER),
         'change',
         '临时新增潜水员 李明（AOW/深潜）→ 海燕号 B 组',
         [
