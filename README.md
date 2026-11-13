@@ -1,6 +1,6 @@
 # dive-manifest · 潜水店出海船单生成与变更响应系统
 
-**▶ 在线演示：https://kasame5.github.io/Grand-Blue/**（直接打开，无需安装）
+▶ 在线演示：https://kasame5.github.io/Grand-Blue/
 
 > **一张船单，为什么需要版本号？**
 
