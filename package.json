@@ -1,0 +1,27 @@
+{
+  "name": "dive-manifest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "潜水店出海船单生成与变更响应系统 — 领域层 + 五屏原型",
+  "scripts": {
+    "demo": "node src/scenarios/answer-chain.ts",
+    "smoke": "node scripts/smoke.mjs",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "browserify": "^17.0.1",
+    "jsdom": "^31.0.0",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "esbuild-wasm": "^0.28.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}

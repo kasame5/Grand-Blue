@@ -1,0 +1,9 @@
+node_modules/
+.npm-cache/
+build/
+
+# dist/ 是构建产物，但为了让人直接下载就能打开，这里刻意保留
+# dist/
+
+.DS_Store
+*.log
