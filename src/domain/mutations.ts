@@ -103,9 +103,37 @@ export function setStatus(snap: Snapshot, status: ManifestStatus, versionNo: num
 export function checkIn(snap: Snapshot, personId: string, at: string): Snapshot {
   const next = clone(snap);
   const diver = next.divers.find((d) => d.id === personId);
-  if (diver) diver.checkInAt = at;
+  if (diver) {
+    diver.checkInAt = at;
+    diver.attendance = 'checked-in';
+  }
   const instructor = next.instructors.find((i) => i.id === personId);
   if (instructor) instructor.checkInAt = at;
+  return next;
+}
+
+/**
+ * 标记弃权：从分组移出、收回一支气瓶、解除当日分配，并记为 absent。
+ *
+ * 这是“变更”，不是“打勾”——人数、配比、气瓶数量都会变，所以调用方要生成新版本。
+ */
+export function markAbsent(snap: Snapshot, diverId: string): Snapshot {
+  const next = clone(snap);
+  const group = next.groups.find((g) => g.memberIds.includes(diverId));
+
+  if (group) {
+    group.memberIds = group.memberIds.filter((id) => id !== diverId);
+    if (group.tankIds.length > group.memberIds.length && group.tankIds.length > 0) {
+      group.tankIds.pop();
+    }
+    removeAssignment(next, diverId, group.id);
+  }
+
+  const diver = next.divers.find((d) => d.id === diverId);
+  if (diver) {
+    diver.attendance = 'absent';
+    diver.checkInAt = null;
+  }
   return next;
 }
 

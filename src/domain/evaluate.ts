@@ -1,4 +1,5 @@
 import type { EvalContext, EvalResult, EvalSummary, Finding, Level, Snapshot } from './types.ts';
+import { deriveChecklist } from './attendance.ts';
 import { CHECKS } from './rules/checks.ts';
 import { RULE_DEFS } from './rules/defs.ts';
 import type { RuleDef } from './rules/defs.ts';
@@ -27,7 +28,9 @@ export function evaluate(
 
     const found = check(snap, def.params, ctx);
     for (const f of found) {
-      collected.push({ ...f, ruleId: def.id, level: def.level });
+      // 默认以 RuleDef 的级别为准（改配置就能把警告升为阻断）；
+      // 标注 escalating 的规则（目前只有 R-05）允许判定函数按时段自己升级。
+      collected.push({ ...f, ruleId: def.id, level: def.escalating ? f.level : def.level });
     }
   }
 
@@ -45,7 +48,8 @@ export function evaluate(
     info: collected.filter((f) => f.level === 'info').length,
   };
 
-  const checklistDone = snap.checklist.every((c) => c.done);
+  // 清单里 c1（海况）、c2（人员签到）由系统状态推导，不能手工勾
+  const checklistDone = deriveChecklist(snap).every((c) => c.done);
 
   return {
     findings: collected,

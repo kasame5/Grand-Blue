@@ -5,6 +5,7 @@ import {
   checkIn,
   completeChecklist,
   confirmSeaCondition,
+  markAbsent,
   moveMember,
   setStatus,
 } from '../domain/mutations.ts';
@@ -100,6 +101,7 @@ export type Action =
   | { type: 'add-diver' }
   | { type: 'move-diver'; diverId: string; toGroupId: string }
   | { type: 'check-in'; personId: string }
+  | { type: 'mark-absent'; personId: string }
   | { type: 'confirm-sea' }
   | { type: 'complete-checklist' }
   | { type: 'transition'; action: ManifestAction }
@@ -228,6 +230,19 @@ export function reducer(state: AppState, action: Action): AppState {
           ...state.events,
         ],
       };
+    }
+
+    case 'mark-absent': {
+      const person = state.snapshot.divers.find((d) => d.id === action.personId);
+      if (!person || person.attendance === 'absent') return state;
+      return commit(
+        state,
+        (s) => markAbsent(s, action.personId),
+        'change',
+        `${person.name} 未到场，标记弃权并移出分组`,
+        [{ to: `${person.name}（潜水员）`, text: '已按未到场处理，从本次船单移出' }],
+        { actor: '店长', text: `${person.name} 标记弃权，移出分组并回收气瓶`, tone: 'warn' },
+      );
     }
 
     case 'confirm-sea': {

@@ -24,6 +24,7 @@ function diver(
     level,
     specialties,
     checkInAt,
+    attendance: checkInAt ? 'checked-in' : 'pending',
   };
 }
 

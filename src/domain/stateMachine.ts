@@ -1,4 +1,5 @@
 import type { EvalContext, Finding, ManifestStatus, Snapshot } from './types.ts';
+import { deriveChecklist } from './attendance.ts';
 import { evaluate } from './evaluate.ts';
 import { STATUS_LABEL } from './codes.ts';
 
@@ -76,7 +77,7 @@ export function attempt(
   }
 
   if (def.action === 'depart') {
-    const pending = snap.checklist.filter((c) => !c.done);
+    const pending = deriveChecklist(snap).filter((c) => !c.done);
     if (pending.length > 0) {
       return {
         ok: false,

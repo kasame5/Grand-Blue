@@ -12,6 +12,7 @@ import {
   checkIn,
   completeChecklist,
   confirmSeaCondition,
+  markAbsent,
   moveMember,
   setStatus,
 } from '../domain/mutations.ts';
@@ -42,13 +43,15 @@ function expect(cond: boolean, msg: string): void {
 }
 
 // 演示时间轴（下午船次；上午王强已带 3 潜，正好构成疲劳警告）
+// 12:30 集合 → 12:35 迟到 → 12:45 起 R-05 升级为阻断（离港前 15 分钟）→ 13:00 计划离港
 const T = {
   init: '2026-11-08T12:35:00+08:00',
   add: '2026-11-08T12:36:00+08:00',
   move: '2026-11-08T12:40:00+08:00',
-  confirm: '2026-11-08T12:45:00+08:00',
-  lock: '2026-11-08T12:50:00+08:00',
-  depart: '2026-11-08T12:58:00+08:00',
+  confirm: '2026-11-08T12:42:00+08:00',
+  lock: '2026-11-08T12:44:00+08:00',
+  departBlocked: '2026-11-08T12:50:00+08:00',
+  depart: '2026-11-08T12:56:00+08:00',
 };
 
 // ------------------------------------------------------------------ 1
@@ -143,14 +146,18 @@ if (lockRes.ok) {
 
 // ------------------------------------------------------------------ 8
 
-banner('步骤 8', '离港确认（清单守卫）', '锁定后还要过离港清单');
-const departBlocked = attempt('depart', live, { now: T.depart });
+banner('步骤 8', '离港确认（未处置人员）', '12:50 已过“离港前 15 分钟”，R-05 从警告升级为阻断');
+const departBlocked = attempt('depart', live, { now: T.departBlocked });
 fail(departBlocked.message);
-expect(!departBlocked.ok, '清单未完成时不应允许离港');
+expect(!departBlocked.ok, '有未处置人员时不应允许离港');
+expect(
+  departBlocked.blockers.some((f) => f.ruleId === 'R-05' && f.level === 'block'),
+  'R-05 应在离港前升级为阻断',
+);
 
 // ------------------------------------------------------------------ 9
 
-banner('步骤 9', '完成清单 → 离港', '海况录入、签到、气瓶装船、救生设备、离港申报');
+banner('步骤 9', '处置：签到 + 海况 + 清单 → 离港', '每个人必须有明确归宿，悬着的人不能上船');
 let ready = confirmSeaCondition(live, 'good', '2026-11-08T12:52:00+08:00', '店长');
 ready = checkIn(ready, 'd-1013', '2026-11-08T12:53:00+08:00');
 ready = checkIn(ready, 'd-1008', '2026-11-08T12:54:00+08:00');
@@ -163,7 +170,7 @@ const departRes = attempt('depart', ready, { now: T.depart });
 if (departRes.ok) {
   ok(departRes.message);
   ready = setStatus(ready, 'departed', 3);
-  console.log(dim(`    离港绑定版本：v${ready.manifest.versionNo} · 实际离港 12:58`));
+  console.log(dim(`    离港绑定版本：v${ready.manifest.versionNo} · 实际离港 12:56`));
 } else {
   fail(departRes.message);
 }
@@ -207,7 +214,36 @@ for (const v of versions) {
 
 // ------------------------------------------------------------------ 11
 
-banner('步骤 11', '补充演示：R-03 气瓶不适航 / R-08 重复分配', '主链路没覆盖到的两条规则，单独验证');
+banner('步骤 11', '补充演示：未处置 → 弃权', '人不到，不能“挂”在名单上；弃权是变更，不是打勾');
+
+const late = structuredClone(v3);
+const lateEval = run(late, T.departBlocked);
+printEval(lateEval, { showInfo: false });
+expect(lateEval.summary.block > 0, '离港前有未处置人员时应产生阻断');
+
+const beforeAbsent = late.groups.find((g) => g.memberIds.includes('d-1013'));
+const afterAbsentSnap = markAbsent(late, 'd-1013');
+const afterAbsent = afterAbsentSnap.groups.find((g) => g.id === beforeAbsent?.id);
+
+const stillPending = afterAbsentSnap.groups.flatMap((g) => g.memberIds).includes('d-1013');
+console.log(`\n  袁朗 弃权前：${beforeAbsent?.code} ${beforeAbsent?.memberIds.length} 人 / ${beforeAbsent?.tankIds.length} 瓶`);
+console.log(`  袁朗 弃权后：${afterAbsent?.code} ${afterAbsent?.memberIds.length} 人 / ${afterAbsent?.tankIds.length} 瓶`);
+console.log(dim(`  仍在分组里？${stillPending ? '是' : '否'}　attendance = ${afterAbsentSnap.divers.find((d) => d.id === 'd-1013')?.attendance}`));
+
+expect(!stillPending, '弃权的人应从分组移出');
+expect(
+  (afterAbsent?.tankIds.length ?? 0) === (beforeAbsent?.tankIds.length ?? 0) - 1,
+  '弃权应同时收回一支气瓶',
+);
+
+const afterAbsentEval = run(afterAbsentSnap, T.departBlocked);
+expect(
+  afterAbsentEval.findings.filter((f) => f.ruleId === 'R-05').length <
+    lateEval.findings.filter((f) => f.ruleId === 'R-05').length,
+  '弃权后 R-05 应少报一个人',
+);
+
+banner('步骤 12', '补充演示：R-03 气瓶不适航 / R-08 重复分配', '主链路没覆盖到的两条规则，单独验证');
 
 const expired = structuredClone(snap);
 const badTank = expired.tanks.find((t) => t.id === 't-114');
@@ -228,7 +264,7 @@ expect(dupFindings.length > 0, '同一人同日多船次应命中 R-08');
 
 // ------------------------------------------------------------------ 12
 
-banner('步骤 12', '8 条规则覆盖情况', '每一条都至少被触发过一次');
+banner('步骤 13', '8 条规则覆盖情况', '每一条都至少被触发过一次');
 printRulesTable(
   RULE_DEFS.map((r) => ({ id: r.id, name: r.name, level: r.level, hits: hits[r.id] ?? 0 })),
 );

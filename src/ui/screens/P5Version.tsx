@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { deriveChecklist, pendingPeople } from '../../domain/attendance.ts';
 import { evaluate } from '../../domain/evaluate.ts';
 import { fmtTime } from '../../domain/util.ts';
 import { diffSnapshots } from '../../domain/version.ts';
@@ -31,11 +32,10 @@ export function P5Version({
   );
 
   const status = snap.manifest.status;
-  const unchecked = [
-    ...snap.divers.filter((d) => !d.checkInAt).map((d) => ({ id: d.id, name: d.name, role: '潜水员' })),
-    ...snap.instructors.filter((i) => !i.checkInAt).map((i) => ({ id: i.id, name: i.name, role: '教练' })),
-  ];
-  const pending = snap.checklist.filter((c) => !c.done);
+  // 未处置的人：仍在分组里、还没签到。已弃权的已移出分组，不在此列。
+  const unchecked = pendingPeople(snap);
+  const checklist = deriveChecklist(snap);
+  const manualPending = checklist.filter((c) => !c.auto && !c.done);
   const seaConfirmed = !!snap.trip.seaCondition?.confirmedAt;
 
   const act = (a: ManifestAction) => dispatch({ type: 'transition', action: a });
@@ -158,26 +158,34 @@ export function P5Version({
 
             <div className={`check ${unchecked.length === 0 ? 'done' : ''}`}>
               <span className="box" />
-              <span>人员全部签到</span>
+              <span>人员全部到场或已处置</span>
               <span className="faint" style={{ marginLeft: 'auto' }}>
-                未签到 {unchecked.length} 人
+                {unchecked.length === 0 ? '已清空' : `未处置 ${unchecked.length} 人`}
               </span>
             </div>
             {unchecked.length > 0 && (
               <div className="tag-list" style={{ paddingLeft: 22, marginTop: -2, marginBottom: 4 }}>
                 {unchecked.map((p) => (
-                  <button
-                    key={p.id}
-                    className="btn small"
-                    onClick={() => dispatch({ type: 'check-in', personId: p.id })}
-                  >
-                    {p.name} 签到
-                  </button>
+                  <span key={p.id} className="row" style={{ gap: 4 }}>
+                    <span className="faint">{p.name}</span>
+                    <button
+                      className="btn small"
+                      onClick={() => dispatch({ type: 'check-in', personId: p.id })}
+                    >
+                      签到
+                    </button>
+                    <button
+                      className="btn small"
+                      onClick={() => dispatch({ type: 'mark-absent', personId: p.id })}
+                    >
+                      弃权
+                    </button>
+                  </span>
                 ))}
               </div>
             )}
 
-            {snap.checklist
+            {checklist
               .filter((c) => c.id !== 'c1' && c.id !== 'c2')
               .map((c) => (
                 <div key={c.id} className={`check ${c.done ? 'done' : ''}`}>
@@ -186,9 +194,13 @@ export function P5Version({
                 </div>
               ))}
 
-            {pending.length > 0 && (
-              <button className="btn" style={{ marginTop: 8 }} onClick={() => dispatch({ type: 'complete-checklist' })}>
-                标记清单完成（{pending.length} 项）
+            {manualPending.length > 0 && (
+              <button
+                className="btn"
+                style={{ marginTop: 8 }}
+                onClick={() => dispatch({ type: 'complete-checklist' })}
+              >
+                标记清单完成（{manualPending.length} 项）
               </button>
             )}
           </div>

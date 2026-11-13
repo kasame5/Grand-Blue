@@ -82,6 +82,9 @@ export interface Vessel {
   crewCount: number;
 }
 
+/** 到场状态：未处理 / 已签到 / 已弃权（弃权 = 从船单移出） */
+export type Attendance = 'pending' | 'checked-in' | 'absent';
+
 export interface Diver {
   id: string;
   code: string;
@@ -89,6 +92,7 @@ export interface Diver {
   level: DiverLevel;
   specialties: Specialty[];
   checkInAt: string | null;
+  attendance: Attendance;
 }
 
 export interface Instructor {

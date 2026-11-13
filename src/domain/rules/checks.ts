@@ -214,11 +214,20 @@ const checkFatigue: RuleCheck = (snap, params) => {
 
 // ------------------------------------------------------------------ R-05
 
-/** 人员未到场：过了“集合前 N 分钟”仍未签到 */
+/** 人员未到场：三个时段三种级别 —— 提醒 → 迟到警告 → 未处置阻断 */
 const checkAttendance: RuleCheck = (snap, params, ctx) => {
   const lead = numParam(params, 'leadMinutes', 30);
-  const deadline = toMs(snap.trip.meetAt) - lead * 60_000;
-  if (toMs(ctx.now) < deadline) return [];
+  const overdueLead = numParam(params, 'overdueMinutes', 15);
+
+  const now = toMs(ctx.now);
+  const meetAt = toMs(snap.trip.meetAt);
+  const departAt = toMs(snap.trip.departAt);
+
+  if (now < meetAt - lead * 60_000) return [];
+
+  const overdue = now >= departAt - overdueLead * 60_000;
+  const lateMinutes = Math.round((now - meetAt) / 60_000);
+  const minutesToDepart = Math.round((departAt - now) / 60_000);
 
   const out: Finding[] = [];
   const seen = new Set<string>();
@@ -226,14 +235,39 @@ const checkAttendance: RuleCheck = (snap, params, ctx) => {
   const check = (personId: string, name: string, checkInAt: string | null) => {
     if (checkInAt !== null || seen.has(personId)) return;
     seen.add(personId);
+
+    const subject = { kind: 'person' as const, id: personId, label: name };
+
+    if (overdue) {
+      out.push(
+        finding(
+          'R-05',
+          'block',
+          subject,
+          `${name} 未签到且未处置：距离港还剩 ${Math.max(minutesToDepart, 0)} 分钟`,
+          { suggestion: '确认到场并签到，或标记弃权（将从船单移出并生成新版本）' },
+        ),
+      );
+      return;
+    }
+
+    if (now >= meetAt) {
+      out.push(
+        finding(
+          'R-05',
+          'warn',
+          subject,
+          `${name} 已迟到 ${lateMinutes} 分钟仍未签到（集合 ${fmtTime(snap.trip.meetAt)}）`,
+          { suggestion: '电话确认；若确定不到，标记弃权并重新编排' },
+        ),
+      );
+      return;
+    }
+
     out.push(
-      finding(
-        'R-05',
-        'info',
-        { kind: 'person', id: personId, label: name },
-        `${name} 未签到（集合 ${fmtTime(snap.trip.meetAt)}，已过集合前 ${lead} 分钟）`,
-        { suggestion: '电话确认，或按弃权处理并重新编排' },
-      ),
+      finding('R-05', 'info', subject, `${name} 尚未签到（集合 ${fmtTime(snap.trip.meetAt)}）`, {
+        suggestion: '临近集合，提醒其尽快到场',
+      }),
     );
   };
 

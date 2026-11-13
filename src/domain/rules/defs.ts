@@ -16,6 +16,11 @@ export interface RuleDef {
   /** 人读的规则描述，界面“规则详情”直接展示 */
   message: string;
   enabled: boolean;
+  /**
+   * 允许判定函数按时段升级级别（提示 → 警告 → 阻断）。
+   * 默认 false：级别由规则定义说了算，改配置即可把警告升为阻断。
+   */
+  escalating?: boolean;
 }
 
 /** 判定函数：纯函数，不查库、不读系统时间、不改快照 */
@@ -63,9 +68,11 @@ export const RULE_DEFS: RuleDef[] = [
     name: '人员未到场',
     level: 'info',
     scope: 'person',
-    params: { leadMinutes: 30 },
-    message: '集合前 30 分钟仍未签到的人员提示',
+    params: { leadMinutes: 30, overdueMinutes: 15 },
+    message:
+      '集合前 30 分钟开始提醒；过了集合时间升为警告；离港前 15 分钟仍未签到则阻断——除非签到或标记弃权',
     enabled: true,
+    escalating: true,
   },
   {
     id: 'R-06',

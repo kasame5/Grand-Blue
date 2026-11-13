@@ -101,7 +101,32 @@ async function main() {
   await tick();
   check('P5 显示版本时间线', text().includes('v3') || text().includes('时间线'));
   check('P5 显示离港清单', text().includes('离港检查清单'));
+  check('R-05 已从提示升级为迟到警告', text().includes('已迟到'));
 
+  click('确认');
+  await tick(60);
+  click('锁定');
+  await tick(60);
+
+  // 未处置人员还在，离港必须被拒
+  click('离港确认');
+  await tick(60);
+  check('有未处置人员时离港被拒', !doc.querySelector('.pill.status-departed'));
+
+  // 一人弃权（= 变更，会升版并回到草稿），一人签到
+  const absentBtn = [...doc.querySelectorAll('button')].find((b) => (b.textContent ?? '').trim() === '弃权');
+  check('存在弃权按钮', !!absentBtn);
+  absentBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  await tick(60);
+  check('弃权后生成新版本', text().includes('v4') || text().includes('弃权'));
+
+  const checkInBtn = [...doc.querySelectorAll('button')].find((b) => (b.textContent ?? '').trim() === '签到');
+  if (checkInBtn) {
+    checkInBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await tick(60);
+  }
+
+  // 变更后要重新确认、锁定
   click('确认');
   await tick(60);
   click('锁定');
@@ -109,12 +134,6 @@ async function main() {
 
   click('录入海况');
   await tick(60);
-  for (let i = 0; i < 3; i += 1) {
-    const btn = [...doc.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes('签到'));
-    if (!btn) break;
-    btn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    await tick(40);
-  }
   const mark = [...doc.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes('标记清单完成'));
   if (mark) {
     mark.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
