@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "潜水店出海船单生成与变更响应系统 — 领域层 + 五屏原型",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "demo": "node src/scenarios/answer-chain.ts",
     "smoke": "node scripts/smoke.mjs",
@@ -19,8 +22,6 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "esbuild": "^0.28.2",
-    "esbuild-wasm": "^0.28.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   }

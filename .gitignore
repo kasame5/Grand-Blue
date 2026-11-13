@@ -3,5 +3,8 @@ node_modules/
 build/
 dist/
 
+# 由 CI 构建并发布，不进版本库
+docs/index.html
+
 .DS_Store
 *.log

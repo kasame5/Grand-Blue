@@ -65,6 +65,11 @@ npm run typecheck
 
 **界面用法**：直接双击 `docs/index.html`。单文件、全部内联，不联网、不起服务。
 
+推送 `main` 后 GitHub Actions 会自动跑「类型检查 → 构建 → jsdom 冒烟」，通过后发布到 Pages：
+**https://kasame5.github.io/Grand-Blue/**
+
+`docs/index.html` 不进版本库，由 CI 每次重新生成（见 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)）。
+
 ---
 
 ## 五屏
