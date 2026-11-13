@@ -1,6 +1,6 @@
 /**
  * 端到端冒烟测试（无浏览器）：
- * 用 jsdom 打开构建产物 dist/index.html，真的把答辩链路点一遍。
+ * 用 jsdom 打开构建产物 docs/index.html，真的把答辩链路点一遍。
  */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const { JSDOM, VirtualConsole } = require('jsdom');
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const html = readFileSync(resolve(root, 'dist/index.html'), 'utf8');
+const html = readFileSync(resolve(root, 'docs/index.html'), 'utf8');
 
 const errors = [];
 const vc = new VirtualConsole();

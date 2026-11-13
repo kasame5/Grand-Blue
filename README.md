@@ -56,12 +56,12 @@
 npm install
 
 npm run demo       # 领域层：跑一遍答辩链路（纯文本，带断言）
-npm run build      # 构建单文件界面 → dist/index.html
+npm run build      # 构建单文件界面 → docs/index.html
 npm run smoke      # 用 jsdom 真的把五屏点一遍
 npm run typecheck
 ```
 
-**界面用法**：直接双击 `dist/index.html`。单文件、全部内联，不联网、不起服务。
+**界面用法**：直接双击 `docs/index.html`。单文件、全部内联，不联网、不起服务。
 
 ---
 
@@ -111,7 +111,7 @@ src/
 
 1. TypeScript Compiler API 输出 CommonJS
 2. browserify（纯 JavaScript）打成单文件
-3. 把 JS 与 CSS 一起内联进 `dist/index.html`
+3. 把 JS 与 CSS 一起内联进 `docs/index.html`
 
 代价是构建脚本长了一点，好处是产物就是一个 HTML，答辩现场没有任何环境依赖。
 

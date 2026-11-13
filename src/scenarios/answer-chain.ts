@@ -240,4 +240,4 @@ if (failed) {
 } else {
   console.log(green(bold('全部断言通过：链路、守卫、版本、规则覆盖均符合预期。')));
 }
-console.log(dim('（领域层验证完毕；五屏界面见 dist/index.html）\n'));
+console.log(dim('（领域层验证完毕；五屏界面见 docs/index.html）\n'));

@@ -5,7 +5,7 @@
  * 这里改成纯进程内方案 —— TypeScript Compiler API 出 CommonJS，
  * browserify（纯 JS）再打成单文件。
  *
- * 结果：dist/index.html 双击即可打开，不联网、不起服务。
+ * 结果：docs/index.html 双击即可打开，不联网、不起服务。
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -118,8 +118,8 @@ ${js}
 </html>
 `;
 
-mkdirSync(resolve(root, 'dist'), { recursive: true });
-writeFileSync(resolve(root, 'dist/index.html'), html, 'utf8');
+mkdirSync(resolve(root, 'docs'), { recursive: true });
+writeFileSync(resolve(root, 'docs/index.html'), html, 'utf8');
 
 const kb = (Buffer.byteLength(html, 'utf8') / 1024).toFixed(0);
-console.log(`✓ dist/index.html 已生成（${kb} KB，单文件、离线可开）`);
+console.log(`✓ docs/index.html 已生成（${kb} KB，单文件、离线可开）`);
